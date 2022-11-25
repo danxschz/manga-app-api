@@ -1,0 +1,9 @@
+CREATE TABLE genre (
+  id SERIAL PRIMARY KEY,
+  name TEXT
+)
+
+CREATE TABLE status (
+  id SERIAL PRIMARY KEY,
+  name TEXT
+)

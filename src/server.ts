@@ -6,7 +6,7 @@ import express, { Request, Response, NextFunction } from 'express';
 
 import 'express-async-errors';
 
-import BaseRouter from './routes/index';
+import BaseRouter from '@routes/index';
 import logger from 'jet-logger';
 import envVars from '@shared/env-vars';
 import { CustomError } from '@shared/errors';
