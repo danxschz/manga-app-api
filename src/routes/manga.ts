@@ -30,12 +30,32 @@ async function detail(req: Request, res: Response, next: NextFunction) {
       m.img_large,
       m.synopsis,
       m.background,
+      (
+        SELECT json_agg(json_build_object('name', c.name, 'role', r.name, 'img', c.img))
+        FROM characters_manga c
+        INNER JOIN roles r
+        ON c.role_id = r.id
+        WHERE c.manga_id = m.id
+      ) AS characters,
+      (
+        SELECT json_agg(json_build_object('username', r.user_id, 'date', r.date,
+         'review', r.review, 'rating', r.rating))
+        FROM reviews r
+        WHERE r.manga_id = m.id
+      ) AS reviews,
       m.chapters,
       m.volumes,
       s.name AS status,
       m.published,
       (
-        SELECT array_agg("name") AS demographics
+        SELECT array_agg("name")
+        FROM manga_genres mg
+        INNER JOIN genres g
+        ON mg.genre_id = g.id
+        WHERE mg.manga_id = m.id
+      ) AS genres,
+      (
+        SELECT array_agg("name")
         FROM manga_demographics md
         INNER JOIN demographics d
         ON md.demographic_id = d.id
@@ -43,7 +63,7 @@ async function detail(req: Request, res: Response, next: NextFunction) {
       ) AS demographics,
       (
         SELECT array_agg("title")
-        FROM manga_alt_titles
+        FROM alt_titles_manga
         WHERE manga_id = m.id
       ) AS alt_titles,
       r.name AS rating,
@@ -60,21 +80,20 @@ async function detail(req: Request, res: Response, next: NextFunction) {
     WHERE m.id = $1
   `;
 
-  const a = `
-    SELECT array_agg("name") AS demographics
-    FROM manga_demographics md
-    INNER JOIN demographics d
-    ON md.demographic_id = d.id
-    WHERE md.manga_id = $1
-  `;
-
   try {
     const manga: any = await db.one(query, [119021]);
     
     const {
       img_normal, 
-      img_large, 
-      //alt_titles, 
+      img_large,
+      chapters,
+      volumes,
+      status,
+      published,
+      genres,
+      demographics,
+      alt_titles,
+      rating, 
       links_amazon, 
       links_viz, 
       links_cdjapan, 
@@ -89,9 +108,6 @@ async function detail(req: Request, res: Response, next: NextFunction) {
     };
     result.img = img;
 
-    //    const titlesArray = alt_titles.split(', ');
-    //   result.alt_titles = titlesArray;
-
     const links = {
       amazon: links_amazon,
       viz: links_viz,
@@ -99,8 +115,20 @@ async function detail(req: Request, res: Response, next: NextFunction) {
       mal: links_mal,
       wikipedia: links_wikipedia,
     };
-    result.links = links;
-    
+
+    const attributes = {
+      chapters,
+      volumes,
+      status,
+      published,
+      genres,
+      demographics,
+      alt_titles,
+      rating,
+      links,
+    };
+    result.attributes = attributes;
+
     return res.send(result);
   }
   catch(e) {
