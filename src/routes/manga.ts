@@ -34,17 +34,24 @@ async function detail(req: Request, res: Response, next: NextFunction) {
       m.volumes,
       s.name AS status,
       m.published,
+      (
+        SELECT array_agg("name") AS demographics
+        FROM manga_demographics md
+        INNER JOIN demographics d
+        ON md.demographic_id = d.id
+        WHERE md.manga_id = m.id
+      ) AS demographics,
+      (
+        SELECT array_agg("title")
+        FROM manga_alt_titles
+        WHERE manga_id = m.id
+      ) AS alt_titles,
       r.name AS rating,
       m.links_amazon,
       m.links_viz,
       m.links_cdjapan,
       m.links_mal,
-      m.links_wikipedia, 
-      (
-        SELECT string_agg("title", ', ')
-        FROM manga_alt_titles
-        WHERE manga_id = m.id
-      ) AS alt_titles
+      m.links_wikipedia
     FROM manga m
     INNER JOIN status s
     ON m.status_id = s.id
@@ -53,13 +60,21 @@ async function detail(req: Request, res: Response, next: NextFunction) {
     WHERE m.id = $1
   `;
 
+  const a = `
+    SELECT array_agg("name") AS demographics
+    FROM manga_demographics md
+    INNER JOIN demographics d
+    ON md.demographic_id = d.id
+    WHERE md.manga_id = $1
+  `;
+
   try {
     const manga: any = await db.one(query, [119021]);
     
     const {
       img_normal, 
       img_large, 
-      alt_titles, 
+      //alt_titles, 
       links_amazon, 
       links_viz, 
       links_cdjapan, 
@@ -74,8 +89,8 @@ async function detail(req: Request, res: Response, next: NextFunction) {
     };
     result.img = img;
 
-    const titlesArray = alt_titles.split(', ');
-    result.alt_titles = titlesArray;
+    //    const titlesArray = alt_titles.split(', ');
+    //   result.alt_titles = titlesArray;
 
     const links = {
       amazon: links_amazon,
